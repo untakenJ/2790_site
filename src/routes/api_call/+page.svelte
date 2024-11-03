@@ -1,8 +1,8 @@
 <!-- STARTER CODE -->
 <!-- <h1>Welcome to SvelteKit</h1>
 <p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p> -->
-<h1>Sample Input Interface</h1>
-<!-- route to ./routes/api_call/_page.svelte -->
+<h1>API Demo</h1>
+<!-- home routing: -->
 <p><a href = './'>Home</a></p>
 <p><a href="./api_call">API Call Demo</a></p>
 
@@ -12,7 +12,7 @@
     // Declare input_value with $state('') to trigger updates on frontend
     let curr_input = $state('');
 
-    function updateInput() {
+    function callAPI() {
         curr_input = input_value
     }
 </script>
@@ -22,9 +22,7 @@
     <input
         type="text"
         bind:value={input_value}
-        placeholder="Enter a string"
+        placeholder="Enter string for API call"
     />
-    <button onclick={updateInput}>Update</button>
+    <button onclick={callAPI}>Call API</button>
 </div>
-
-<p>Updated Input: {curr_input}</p>
