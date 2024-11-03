@@ -1,10 +1,8 @@
 <!-- STARTER CODE -->
 <!-- <h1>Welcome to SvelteKit</h1>
 <p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p> -->
-<h1>Sample Input Interface</h1>
 <!-- route to ./routes/api_call/_page.svelte -->
-<p><a href = './'>Home</a></p>
-<p><a href="./api_call">API Call Demo</a></p>
+<h1>Sample Input Interface</h1>
 
 <!-- VAR DECLARATION -->
 <script>
