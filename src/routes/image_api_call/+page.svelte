@@ -1,5 +1,3 @@
-<h1>Stable Diffusion Image Generator</h1>
-
 <script lang="ts">
     // User input and API response states
     let input_value = '';
@@ -23,8 +21,6 @@
         api_response = null;
 
         try {
-            // console.log("API key: " + "(defined))");
-
             // Prepare form data
             const formData = new FormData();
             formData.append("prompt", input_value);
@@ -65,23 +61,137 @@
         } finally {
             is_loading = false;
         }
-}
+    }
 </script>
 
-<!-- Input field and button -->
-<div>
-    <input bind:value={input_value} placeholder="Enter your image prompt" />
-    <button on:click={callAPI} disabled={is_loading}>Generate Image</button>
-</div>
+<style>
+    /* Container styling */
+    .container {
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+        background-color: #f9fafb;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        font-family: 'Arial', sans-serif;
+    }
 
-<!-- Display loading, error, or API response -->
-{#if is_loading}
-    <p>Loading...</p>
-{:else if error}
-    <p>Error: {error}</p>
-{:else if api_response}
-    <div>
-        <h2>Prompt: {api_response.prompt}</h2>
-        <img src={api_response.image_url} alt="(Stable Diffusion Image)" style="width: 40%; height: 40;"/>
+    h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+    }
+
+    /* Input and button styling */
+    .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    input[type="text"] {
+        padding: 12px 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+    }
+
+    input[type="text"]:focus {
+        border-color: #4A90E2;
+        outline: none;
+    }
+
+    button {
+        padding: 12px 20px;
+        background-color: #4A90E2;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    button:disabled {
+        background-color: #a0c4e3;
+        cursor: not-allowed;
+    }
+
+    button:hover:not(:disabled) {
+        background-color: #357ABD;
+    }
+
+    /* Response styling */
+    .response {
+        text-align: center;
+        margin-top: 30px;
+    }
+
+    .response h2 {
+        color: #333;
+        margin-bottom: 15px;
+    }
+
+    .response img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Loading and error messages */
+    .message {
+        text-align: center;
+        font-size: 18px;
+        color: #555;
+        margin-top: 20px;
+    }
+
+    .error {
+        color: #E74C3C;
+    }
+
+    /* Responsive design */
+    @media (max-width: 600px) {
+        .container {
+            margin: 20px;
+            padding: 15px;
+        }
+
+        button, input[type="text"] {
+            font-size: 14px;
+            padding: 10px 15px;
+        }
+    }
+</style>
+
+<div class="container">
+    <h1>Base Image Generator</h1>
+
+    <!-- Input field and button -->
+    <div class="input-group">
+        <input
+            type="text"
+            bind:value={input_value}
+            placeholder="Enter image prompt"
+            aria-label="Image prompt"
+        />
+        <button on:click={callAPI} disabled={is_loading}>
+            {is_loading ? 'Generating...' : 'Generate Image'}
+        </button>
     </div>
-{/if}
+
+    <!-- Display loading, error, or API response -->
+    {#if is_loading}
+        <p class="message">Loading...</p>
+    {:else if error}
+        <p class="message error">Error: {error}</p>
+    {:else if api_response}
+        <div class="response">
+            <h2>Prompt: {api_response.prompt}</h2>
+            <img src={api_response.image_url} alt="Generated Image" />
+        </div>
+    {/if}
+</div>
