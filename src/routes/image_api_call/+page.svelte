@@ -1,6 +1,10 @@
 <script lang="ts">
+    import { onMount } from 'svelte';
+
     // User input and API response states
     let input_value = '';
+    let feedback_value = '';
+    let control_image: File | null = null;
     interface ApiResponse {
         prompt: string;
         image_url: string;
@@ -9,7 +13,10 @@
     let error = '';
     let is_loading = false;
 
-    // Fetch image from Stability API based on user prompt
+    // History of prompts and images
+    let history: ApiResponse[] = [];
+
+    // Fetch image from Stability API based on user prompt and optional control image
     async function callAPI() {
         if (!input_value.trim()) {
             alert("Please enter a prompt.");
@@ -27,10 +34,15 @@
             formData.append("height", '512');
             formData.append("width", '512');
 
+            if (control_image) {
+                formData.append("image", control_image);
+                // Optionally, add other parameters like fidelity, seed, etc.
+            }
+
             const response = await fetch("https://api.stability.ai/v2beta/stable-image/generate/core", {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${import.meta.env.VITE_STABILITY_KEY}`, // Stability API Key,
+                    "Authorization": `Bearer ${import.meta.env.VITE_STABILITY_KEY}`, // Stability API Key
                     "Accept": "image/*"
                 },
                 body: formData
@@ -52,6 +64,9 @@
                 prompt: input_value,
                 image_url: imageUrl
             };
+
+            // Add to history
+            history = [...history, api_response];
         } catch (err) {
             if (err instanceof Error) {
                 error = err.message;
@@ -60,7 +75,43 @@
             }
         } finally {
             is_loading = false;
+            input_value = ''; // Clear input after submission
         }
+    }
+
+    // Handle image upload
+    function handleImageUpload(event: Event) {
+        const target = event.target as HTMLInputElement;
+        if (target.files && target.files[0]) {
+            control_image = target.files[0];
+        }
+    }
+
+    // Handle feedback submission
+    async function submitFeedback() {
+        if (!feedback_value.trim()) {
+            alert("Please enter your feedback.");
+            return;
+        }
+
+        // Use the last generated image as the control image for refinement
+        if (history.length === 0) {
+            alert("Generate an image first before providing feedback.");
+            return;
+        }
+
+        const lastImage = history[history.length - 1].image_url;
+
+        // Fetch the blob from the last image URL
+        const response = await fetch(lastImage);
+        const blob = await response.blob();
+        const file = new File([blob], "control_image.png", { type: blob.type });
+
+        control_image = file;
+        input_value = feedback_value;
+        feedback_value = '';
+
+        await callAPI();
     }
 </script>
 
@@ -90,7 +141,7 @@
         margin-bottom: 20px;
     }
 
-    input[type="text"] {
+    input[type="text"], input[type="file"] {
         padding: 12px 20px;
         border: 1px solid #ccc;
         border-radius: 5px;
@@ -98,7 +149,7 @@
         transition: border-color 0.3s;
     }
 
-    input[type="text"]:focus {
+    input[type="text"]:focus, input[type="file"]:focus {
         border-color: #4A90E2;
         outline: none;
     }
@@ -153,6 +204,44 @@
         color: #E74C3C;
     }
 
+    /* History styling */
+    .history {
+        margin-top: 40px;
+    }
+
+    .history-item {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .history-item img {
+        width: 100px;
+        height: auto;
+        border-radius: 5px;
+        object-fit: cover;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .history-item .prompt {
+        flex: 1;
+        font-size: 16px;
+        color: #333;
+    }
+
+    /* Feedback section */
+    .feedback-section {
+        margin-top: 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .feedback-section input[type="text"] {
+        flex: 1;
+    }
+
     /* Responsive design */
     @media (max-width: 600px) {
         .container {
@@ -160,17 +249,26 @@
             padding: 15px;
         }
 
-        button, input[type="text"] {
+        button, input[type="text"], input[type="file"] {
             font-size: 14px;
             padding: 10px 15px;
+        }
+
+        .history-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .history-item img {
+            width: 100%;
         }
     }
 </style>
 
 <div class="container">
-    <h1>Base Image Generator</h1>
+    <h1>Core API Calls</h1>
 
-    <!-- Input field and button -->
+    <!-- Input field, image upload, and generate button -->
     <div class="input-group">
         <input
             type="text"
@@ -178,13 +276,35 @@
             placeholder="Enter image prompt"
             aria-label="Image prompt"
         />
+        <input
+            type="file"
+            accept="image/*"
+            on:change={handleImageUpload}
+            aria-label="Upload control image (optional)"
+        />
         <button on:click={callAPI} disabled={is_loading}>
             {is_loading ? 'Generating...' : 'Generate Image'}
         </button>
     </div>
 
+    <!-- Feedback section -->
+    {#if history.length > 0}
+        <div class="feedback-section">
+            <h3>Refinement Feedback:</h3>
+            <input
+                type="text"
+                bind:value={feedback_value}
+                placeholder="Enter feedback prompt"
+                aria-label="Feedback prompt"
+            />
+            <button on:click={submitFeedback} disabled={is_loading}>
+                {is_loading ? 'Refining...' : 'Submit Feedback'}
+            </button>
+        </div>
+    {/if}
+
     <!-- Display loading, error, or API response -->
-    {#if is_loading}
+    {#if is_loading && history.length === 0}
         <p class="message">Loading...</p>
     {:else if error}
         <p class="message error">Error: {error}</p>
@@ -192,6 +312,19 @@
         <div class="response">
             <h2>Prompt: {api_response.prompt}</h2>
             <img src={api_response.image_url} alt="Generated Image" />
+        </div>
+    {/if}
+
+    <!-- History of generated images -->
+    {#if history.length > 1}
+        <div class="history">
+            <h3>History</h3>
+            {#each history.slice(0, history.length - 1) as item, index}
+                <div class="history-item">
+                    <img src={item.image_url} alt={`Generated Image ${index + 1}`} />
+                    <p class="prompt">Prompt: {item.prompt}</p>
+                </div>
+            {/each}
         </div>
     {/if}
 </div>
