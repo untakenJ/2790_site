@@ -1,3 +1,5 @@
+<!-- Improving Formatting -->
+
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
 
@@ -47,7 +49,7 @@
     }
 
     // Fetch image from Stability API based on user prompt and optional control image
-    async function callAPI() {
+    async function callStability() {
         if (!input_value.trim()) {
             alert("Please enter a prompt.");
             return;
@@ -185,7 +187,7 @@
         feedback_value = '';
 
         // Call the API to generate a new image based on the modified image
-        await callAPI();
+        await callStability();
     }
 
     // Combine the original image and the canvas drawing into a single image
@@ -318,87 +320,248 @@
             console.log("Component destroyed. Removing keydown event listener.");
         };
     });
-</script>
 
+    // Chatbot Integration
+
+    // Chatbot states
+    let chatInput = '';
+    let chatMessagesChat: { user: boolean; text: string }[] = [];
+    let isChatLoading = false;
+    let chatError = '';
+
+    // Access the GPT API key from environment variables
+    const GPT_API_KEY = import.meta.env.VITE_GPT_API_KEY;
+
+    // Function to handle sending a message
+    async function sendChatMessage() {
+        if (chatInput.trim() === '') return;
+
+        // Add user message to chat
+        chatMessagesChat = [...chatMessagesChat, { user: true, text: chatInput }];
+
+        // Store the current input and clear it
+        const userMessage = chatInput;
+        chatInput = '';
+        chatError = '';
+        isChatLoading = true;
+
+        // Add a temporary "Typing..." message
+        chatMessagesChat = [...chatMessagesChat, { user: false, text: "Typing..." }];
+
+        try {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${GPT_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4', // You can change this to 'gpt-3.5-turbo' if preferred
+                    messages: [
+                        { role: 'system', content: 'You are a helpful assistant.' },
+                        { role: 'user', content: userMessage }
+                    ],
+                    temperature: 0.7, // Adjust as needed
+                    max_tokens: 150, // Adjust as needed
+                    n: 1,
+                    stop: null
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error.message || 'Failed to fetch response from OpenAI');
+            }
+
+            const data = await response.json();
+            const botResponse = data.choices[0].message.content.trim();
+
+            // Remove the "Typing..." message
+            chatMessagesChat.pop();
+
+            // Add the actual bot response
+            chatMessagesChat = [...chatMessagesChat, { user: false, text: botResponse }];
+        } catch (error) {
+            // Replace "Typing..." with an error message
+            chatMessagesChat.pop();
+            chatMessagesChat = [...chatMessagesChat, { user: false, text: "Sorry, something went wrong. Please try again." }];
+            console.error('GPT API Error:', error);
+            chatError = error instanceof Error ? error.message : 'An unknown error occurred.';
+        } finally {
+            isChatLoading = false;
+        }
+    }
+</script>
 <style>
-    /* Container styling */
-    .container {
-        max-width: 800px;
-        margin: 50px auto;
+    :root {
+        /* Universal Colors */
+        --box-background-color: #f1f1f1;
+        --button-background-color: #4A90E2;
+        --button-hover-color: #357ABD;
+        --button-disabled-color: #a0c4e3;
+        --undo-button-color: #FF5733;
+        --undo-button-hover-color: #e04e2a;
+        --text-color: #333;
+        --secondary-text-color: #555;
+        --error-color: #E74C3C;
+
+        /* Universal Fonts */
+        --font-family: 'Arial', sans-serif;
+        --title-font-size: 1.5rem;
+        --message-font-size: 1rem;
+    }
+
+    /* Apply universal font family */
+    body {
+        font-family: var(--font-family);
+    }
+
+    /* Parent container to hold both the image interaction and chatbot panes */
+    .parent-container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start; /* Align items to the top */
+        gap: 20px;
         padding: 20px;
-        background-color: #f9fafb;
+        flex-wrap: wrap;
+    }
+
+    /* Shared Box Styling */
+    .box {
+        background-color: var(--box-background-color);
+        padding: 20px;
         border-radius: 10px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        font-family: 'Arial', sans-serif;
+        flex: 1 1 300px; /* Flexible width */
+        max-width: 800px;
+        min-width: 250px;
+        height: fit-content;
+    }
+
+    /* Remove individual container and chatbot-pane styles and use the shared .box class */
+    .container, .chatbot-pane {
+        /* Inherit styles from .box */
+    }
+
+    /* Title Styling */
+    h1, h2, h3 {
+        font-family: var(--font-family);
+        color: var(--text-color);
     }
 
     h1 {
+        font-size: 2rem;
         text-align: center;
-        color: #333;
         margin-bottom: 30px;
     }
 
-    /* Input and button styling */
-    .input-group {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
+    h2 {
+        font-size: var(--title-font-size);
+        text-align: center;
         margin-bottom: 20px;
     }
 
-    input[type="text"], input[type="file"] {
+    h3 {
+        font-size: 1.25rem;
+        margin-bottom: 10px;
+    }
+
+    /* Chat Messages Styling */
+    .chat-messages {
+        max-height: 400px;
+        overflow-y: auto;
+        margin-bottom: 15px;
+    }
+
+    .chat-message {
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-message.user {
+        align-items: flex-end;
+    }
+
+    .chat-message.bot {
+        align-items: flex-start;
+    }
+
+    .chat-message p {
+        padding: 10px 15px;
+        border-radius: 20px;
+        max-width: 80%;
+        word-wrap: break-word;
+        font-size: var(--message-font-size);
+        font-family: var(--font-family);
+    }
+
+    .chat-message.user p {
+        background-color: #4A90E2;
+        color: white;
+    }
+
+    .chat-message.bot p {
+        background-color: #e0e0e0;
+        color: var(--text-color);
+    }
+
+    /* Input and Button Styling */
+    .input-group, .feedback-section, .chat-input {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    input[type="text"], input[type="file"], .chat-input input[type="text"] {
         padding: 12px 20px;
         border: 1px solid #ccc;
         border-radius: 5px;
-        font-size: 16px;
+        font-size: var(--message-font-size);
         transition: border-color 0.3s;
+        font-family: var(--font-family);
     }
 
-    input[type="text"]:focus, input[type="file"]:focus {
+    input[type="text"]:focus, input[type="file"]:focus, .chat-input input[type="text"]:focus {
         border-color: #4A90E2;
         outline: none;
     }
 
     button {
         padding: 12px 20px;
-        background-color: #4A90E2;
+        background-color: var(--button-background-color);
         color: white;
         border: none;
-        border-radius: 5px;
-        font-size: 16px;
+        border-radius: 20px; /* Uniform button shape */
+        font-size: 1rem;
         cursor: pointer;
         transition: background-color 0.3s;
+        font-family: var(--font-family);
     }
 
     button:disabled {
-        background-color: #a0c4e3;
+        background-color: var(--button-disabled-color);
         cursor: not-allowed;
     }
 
     button:hover:not(:disabled) {
-        background-color: #357ABD;
+        background-color: var(--button-hover-color);
     }
 
-    /* Feedback and Controls styling */
-    .feedback-section {
-        margin-top: 30px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
+    /* Specific Button Styling for Undo */
+    .undo-button {
+        background-color: var(--undo-button-color);
+        border-radius: 5px; /* Slightly different shape if desired */
+        font-size: 0.875rem;
+        padding: 6px 12px;
     }
 
-    .feedback-section input[type="text"] {
-        flex: 1;
-        padding: 12px 20px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        font-size: 16px;
-        transition: border-color 0.3s;
+    .undo-button:disabled {
+        background-color: #ffb3ab;
     }
 
-    .feedback-section input[type="text"]:focus {
-        border-color: #4A90E2;
-        outline: none;
+    .undo-button:hover:not(:disabled) {
+        background-color: var(--undo-button-hover-color);
     }
 
     /* Brush Controls */
@@ -410,44 +573,19 @@
     }
 
     .brush-controls label {
-        font-size: 14px;
-        color: #333;
+        font-size: 0.875rem;
+        color: var(--text-color);
+        font-family: var(--font-family);
     }
 
     .brush-controls input[type="range"] {
         width: 150px;
     }
 
-    /* Undo Button */
-    .undo-button {
-        padding: 6px 12px;
-        background-color: #FF5733; /* Orange for undo */
-        color: white;
-        border: none;
-        border-radius: 4px;
-        font-size: 14px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-
-    .undo-button:disabled {
-        background-color: #ffb3ab;
-        cursor: not-allowed;
-    }
-
-    .undo-button:hover:not(:disabled) {
-        background-color: #e04e2a;
-    }
-
-    /* Response styling */
+    /* Response Styling */
     .response {
         text-align: center;
         margin-top: 30px;
-    }
-
-    .response h2 {
-        color: #333;
-        margin-bottom: 15px;
     }
 
     .image-container {
@@ -469,19 +607,19 @@
         cursor: crosshair;
     }
 
-    /* Loading and error messages */
+    /* Loading and Error Messages */
     .message {
         text-align: center;
-        font-size: 18px;
-        color: #555;
+        font-size: 1.125rem;
+        color: var(--secondary-text-color);
         margin-top: 20px;
     }
 
     .error {
-        color: #E74C3C;
+        color: var(--error-color);
     }
 
-    /* History styling */
+    /* History Styling */
     .history {
         margin-top: 40px;
     }
@@ -529,9 +667,10 @@
     }
 
     .prompt-section .prompt {
-        font-size: 16px;
-        color: #333;
+        font-size: 1rem;
+        color: var(--text-color);
         margin: 0;
+        font-family: var(--font-family);
     }
 
     .type-and-download {
@@ -541,17 +680,28 @@
     }
 
     .type {
-        font-size: 14px;
+        font-size: 0.875rem;
         color: #777;
     }
 
     .timestamp {
-        font-size: 12px;
+        font-size: 0.75rem;
         color: #999;
         margin-top: 3px;
     }
 
-    /* Responsive design */
+    /* Responsive Design */
+    @media (max-width: 1000px) {
+        .parent-container {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container, .chatbot-pane {
+            max-width: 100%;
+        }
+    }
+
     @media (max-width: 600px) {
         .container {
             margin: 20px;
@@ -559,7 +709,7 @@
         }
 
         button, input[type="text"], input[type="file"], .brush-controls input[type="range"] {
-            font-size: 14px;
+            font-size: 0.875rem;
             padding: 10px 15px;
         }
 
@@ -579,112 +729,143 @@
     }
 </style>
 
-<div class="container">
-    <h1>Image Interaction</h1>
+<div class="parent-container">
+    <!-- Existing Image Interaction Container -->
+    <div class="container box">
+        <h1>Image Interaction</h1>
 
-    <!-- Input field, image upload, and generate button -->
-    <div class="input-group">
-        <input
-            type="text"
-            bind:value={input_value}
-            placeholder="Enter image prompt"
-            aria-label="Image prompt"
-        />
-        <input
-            type="file"
-            accept="image/*"
-            on:change={handleImageUpload}
-            aria-label="Upload control image (optional)"
-        />
-        <button on:click={callAPI} disabled={is_loading}>
-            {is_loading ? 'Generating...' : 'Generate Image'}
-        </button>
-    </div>
-
-    <!-- Feedback section -->
-    {#if history.length > 0}
-        <div class="feedback-section">
-            <h3>Refinement Feedback:</h3>
+        <!-- Input field, image upload, and generate button -->
+        <div class="input-group">
             <input
                 type="text"
-                bind:value={feedback_value}
-                placeholder="Enter feedback prompt"
-                aria-label="Feedback prompt"
+                bind:value={input_value}
+                placeholder="Initial image prompt"
+                aria-label="Image prompt"
             />
-            <button on:click={submitFeedback} disabled={is_loading}>
-                {is_loading ? 'Refining...' : 'Submit Feedback'}
-            </button>
-        </div>
-    {/if}
-
-    <!-- Brush Controls and Undo Button -->
-    {#if history.length > 0}
-        <div class="brush-controls">
-            <label for="brushSize">Brush: {brushSize}px</label>
             <input
-                type="range"
-                id="brushSize"
-                min="1"
-                max="50"
-                bind:value={brushSize}
-                aria-label="Brush size slider"
+                type="file"
+                accept="image/*"
+                on:change={handleImageUpload}
+                aria-label="Upload control image (optional)"
             />
-            <button class="undo-button" on:click={undo} disabled={undoStack.length === 0}>
-                Undo
+            <button on:click={callStability} disabled={is_loading}>
+                {is_loading ? 'Generating...' : 'Generate Image'}
             </button>
         </div>
-    {/if}
 
-    <!-- Display loading, error, or API response -->
-    {#if is_loading && history.length === 0}
-        <p class="message">Loading...</p>
-    {:else if error}
-        <p class="message error">Error: {error}</p>
-    {:else if api_response}
-        <div class="response">
-            <h2>Prompt: {api_response.prompt}</h2>
-            <div class="image-container">
-                <img
-                    bind:this={imageElement}
-                    src={api_response.image_url}
-                    alt="Generated Image"
-                    on:load={handleImageLoad}
+        <!-- Feedback section -->
+        {#if history.length > 0}
+            <div class="feedback-section">
+                <h3>Refinement Feedback:</h3>
+                <input
+                    type="text"
+                    bind:value={feedback_value}
+                    placeholder="Modification Prompt"
+                    aria-label="Feedback prompt"
                 />
-                <canvas
-                    bind:this={canvas}
-                    on:mousedown={startDrawing}
-                    on:mousemove={draw}
-                    on:mouseup={stopDrawing}
-                    on:mouseout={stopDrawing}
-                ></canvas>
+                <button on:click={submitFeedback} disabled={is_loading}>
+                    {is_loading ? 'Refining...' : 'Submit Feedback'}
+                </button>
             </div>
-        </div>
-    {/if}
+        {/if}
 
-    <!-- History of generated and modified images -->
-    {#if history.length > 1}
-        <div class="history">
-            <h3>History</h3>
-            {#each history as item, index}
-                <div class="history-item {item.category}">
-                    <img src={item.image_url} alt={`Image ${index + 1}`} />
-                    <div class="prompt-section">
-                        <p class="prompt">Prompt: {item.prompt}</p>
-                        <div class="type-and-download">
-                            <span class="type">
-                                {#if item.category === 'generated'}
-                                    Base Generation
-                                {:else if item.category === 'modified'}
-                                    User Modification
-                                {:else if item.category === 'refined'}
-                                    AI Refinement
-                                {/if}
-                            </span>
+        <!-- Brush Controls and Undo Button -->
+        {#if history.length > 0}
+            <div class="brush-controls">
+                <label for="brushSize">Brush: {brushSize}px</label>
+                <input
+                    type="range"
+                    id="brushSize"
+                    min="1"
+                    max="50"
+                    bind:value={brushSize}
+                    aria-label="Brush size slider"
+                />
+                <button class="undo-button" on:click={undo} disabled={undoStack.length === 0}>
+                    Undo
+                </button>
+            </div>
+        {/if}
+
+        <!-- Display loading, error, or API response -->
+        <!-- {#if is_loading && history.length === 0}
+            <p class="message">Loading...</p> -->
+        {#if ~(is_loading && history.length === 0) && error}
+            <p class="message error">Error: {error}</p>
+        {:else if api_response}
+            <div class="response">
+                <h2>Prompt: {api_response.prompt}</h2>
+                <div class="image-container">
+                    <img
+                        bind:this={imageElement}
+                        src={api_response.image_url}
+                        alt="Generated Image"
+                        on:load={handleImageLoad}
+                    />
+                    <canvas
+                        bind:this={canvas}
+                        on:mousedown={startDrawing}
+                        on:mousemove={draw}
+                        on:mouseup={stopDrawing}
+                        on:mouseout={stopDrawing}
+                    ></canvas>
+                </div>
+            </div>
+        {/if}
+
+        <!-- History of generated and modified images -->
+        {#if history.length > 1}
+            <div class="history">
+                <h3>History</h3>
+                {#each history as item, index}
+                    <div class="history-item {item.category}">
+                        <img src={item.image_url} alt={"Image " + (index + 1)} />
+                        <div class="prompt-section">
+                            <p class="prompt">Prompt: {item.prompt}</p>
+                            <div class="type-and-download">
+                                <span class="type">
+                                    {#if item.category === 'generated'}
+                                        Base Generation
+                                    {:else if item.category === 'modified'}
+                                        User Modification
+                                    {:else if item.category === 'refined'}
+                                        AI Refinement
+                                    {/if}
+                                </span>
+                            </div>
+                            <p class="timestamp">Time: {new Date(item.timestamp).toLocaleString()}</p>
                         </div>
-                        <p class="timestamp">Time: {new Date(item.timestamp).toLocaleString()}</p>
                     </div>
+                {/each}
+            </div>
+        {/if}
+    </div>
+
+    <!-- Chatbot Pane -->
+    <div class="chatbot-pane box">
+        <h2>Chatbot</h2>
+        <div class="chat-messages">
+            {#each chatMessagesChat as message}
+                <div class="chat-message {message.user ? 'user' : 'bot'}">
+                    <p>{message.text}</p>
                 </div>
             {/each}
         </div>
-    {/if}
+        {#if chatError}
+            <p class="chat-error">Error: {chatError}</p>
+        {/if}
+        <div class="chat-input">
+            <input
+                type="text"
+                bind:value={chatInput}
+                placeholder="Type your message..."
+                aria-label="Chat input"
+                on:keydown={(e) => { if (e.key === 'Enter') sendChatMessage(); }}
+                disabled={isChatLoading}
+            />
+            <button on:click={sendChatMessage} disabled={isChatLoading}>
+                {isChatLoading ? 'Sending...' : 'Send'}
+            </button>
+        </div>
+    </div>
 </div>

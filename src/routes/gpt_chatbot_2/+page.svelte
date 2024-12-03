@@ -1,3 +1,5 @@
+<!-- Base 4o functionality -->
+
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
 
@@ -47,7 +49,7 @@
     }
 
     // Fetch image from Stability API based on user prompt and optional control image
-    async function callAPI() {
+    async function callStability() {
         if (!input_value.trim()) {
             alert("Please enter a prompt.");
             return;
@@ -185,7 +187,7 @@
         feedback_value = '';
 
         // Call the API to generate a new image based on the modified image
-        await callAPI();
+        await callStability();
     }
 
     // Combine the original image and the canvas drawing into a single image
@@ -318,9 +320,194 @@
             console.log("Component destroyed. Removing keydown event listener.");
         };
     });
+
+    // Chatbot Integration
+
+    // Chatbot states
+    let chatInput = '';
+    let chatMessagesChat: { user: boolean; text: string }[] = [];
+    let isChatLoading = false;
+    let chatError = '';
+
+    // Access the GPT API key from environment variables
+    const GPT_API_KEY = import.meta.env.VITE_GPT_API_KEY;
+
+    // Function to handle sending a message
+    async function sendChatMessage() {
+        if (chatInput.trim() === '') return;
+
+        // Add user message to chat
+        chatMessagesChat = [...chatMessagesChat, { user: true, text: chatInput }];
+
+        // Store the current input and clear it
+        const userMessage = chatInput;
+        chatInput = '';
+        chatError = '';
+        isChatLoading = true;
+
+        // Add a temporary "Typing..." message
+        chatMessagesChat = [...chatMessagesChat, { user: false, text: "Typing..." }];
+
+        try {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${GPT_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4', // You can change this to 'gpt-3.5-turbo' if preferred
+                    messages: [
+                        { role: 'system', content: 'You are a helpful assistant.' },
+                        { role: 'user', content: userMessage }
+                    ],
+                    temperature: 0.7, // Adjust as needed
+                    max_tokens: 150, // Adjust as needed
+                    n: 1,
+                    stop: null
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error.message || 'Failed to fetch response from OpenAI');
+            }
+
+            const data = await response.json();
+            const botResponse = data.choices[0].message.content.trim();
+
+            // Remove the "Typing..." message
+            chatMessagesChat.pop();
+
+            // Add the actual bot response
+            chatMessagesChat = [...chatMessagesChat, { user: false, text: botResponse }];
+        } catch (error) {
+            // Replace "Typing..." with an error message
+            chatMessagesChat.pop();
+            chatMessagesChat = [...chatMessagesChat, { user: false, text: "Sorry, something went wrong. Please try again." }];
+            console.error('GPT API Error:', error);
+            chatError = error instanceof Error ? error.message : 'An unknown error occurred.';
+        } finally {
+            isChatLoading = false;
+        }
+    }
 </script>
 
+
 <style>
+    
+    /* Parent container to hold both the image interaction and chatbot panes */
+    .parent-container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 20px;
+        padding: 20px;
+        flex-wrap: wrap;
+    }
+
+    /* Existing container styling adjusted for flexible width */
+    .container {
+        flex: 1 1 600px; /* Adjust as needed */
+        max-width: 800px;
+        /* Removed margin: 50px auto; to align within flex parent */
+    }
+
+    /* Chatbot pane styling */
+    .chatbot-pane {
+        flex: 1 1 300px; /* Adjust as needed */
+        max-width: 400px;
+        min-width: 250px;
+        background-color: #f1f1f1;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        height: fit-content;
+    }
+
+    .chatbot-pane h2 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 20px;
+    }
+
+    .chat-messages {
+        max-height: 400px;
+        overflow-y: auto;
+        margin-bottom: 15px;
+    }
+
+    .chat-message {
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-message.user {
+        align-items: flex-end;
+    }
+
+    .chat-message.bot {
+        align-items: flex-start;
+    }
+
+    .chat-message p {
+        padding: 10px 15px;
+        border-radius: 20px;
+        max-width: 80%;
+        word-wrap: break-word;
+    }
+
+    .chat-message.user p {
+        background-color: #4A90E2;
+        color: white;
+    }
+
+    .chat-message.bot p {
+        background-color: #e0e0e0;
+        color: #333;
+    }
+
+    .chat-input {
+        display: flex;
+        gap: 10px;
+    }
+
+    .chat-input input[type="text"] {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 20px;
+        font-size: 16px;
+    }
+
+    .chat-input button {
+        padding: 10px 15px;
+        background-color: #4A90E2;
+        color: white;
+        border: none;
+        border-radius: 20px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    .chat-input button:hover {
+        background-color: #357ABD;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1000px) {
+        .parent-container {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container, .chatbot-pane {
+            max-width: 100%;
+        }
+    }
+
     /* Container styling */
     .container {
         max-width: 800px;
@@ -578,113 +765,143 @@
         }
     }
 </style>
+<div class="parent-container">
+    <!-- Existing Image Interaction Container -->
+    <div class="container">
+        <h1>Image Interaction</h1>
 
-<div class="container">
-    <h1>Image Interaction</h1>
-
-    <!-- Input field, image upload, and generate button -->
-    <div class="input-group">
-        <input
-            type="text"
-            bind:value={input_value}
-            placeholder="Enter image prompt"
-            aria-label="Image prompt"
-        />
-        <input
-            type="file"
-            accept="image/*"
-            on:change={handleImageUpload}
-            aria-label="Upload control image (optional)"
-        />
-        <button on:click={callAPI} disabled={is_loading}>
-            {is_loading ? 'Generating...' : 'Generate Image'}
-        </button>
-    </div>
-
-    <!-- Feedback section -->
-    {#if history.length > 0}
-        <div class="feedback-section">
-            <h3>Refinement Feedback:</h3>
+        <!-- Input field, image upload, and generate button -->
+        <div class="input-group">
             <input
                 type="text"
-                bind:value={feedback_value}
-                placeholder="Enter feedback prompt"
-                aria-label="Feedback prompt"
+                bind:value={input_value}
+                placeholder="Enter image prompt"
+                aria-label="Image prompt"
             />
-            <button on:click={submitFeedback} disabled={is_loading}>
-                {is_loading ? 'Refining...' : 'Submit Feedback'}
-            </button>
-        </div>
-    {/if}
-
-    <!-- Brush Controls and Undo Button -->
-    {#if history.length > 0}
-        <div class="brush-controls">
-            <label for="brushSize">Brush: {brushSize}px</label>
             <input
-                type="range"
-                id="brushSize"
-                min="1"
-                max="50"
-                bind:value={brushSize}
-                aria-label="Brush size slider"
+                type="file"
+                accept="image/*"
+                on:change={handleImageUpload}
+                aria-label="Upload control image (optional)"
             />
-            <button class="undo-button" on:click={undo} disabled={undoStack.length === 0}>
-                Undo
+            <button on:click={callStability} disabled={is_loading}>
+                {is_loading ? 'Generating...' : 'Generate Image'}
             </button>
         </div>
-    {/if}
 
-    <!-- Display loading, error, or API response -->
-    {#if is_loading && history.length === 0}
-        <p class="message">Loading...</p>
-    {:else if error}
-        <p class="message error">Error: {error}</p>
-    {:else if api_response}
-        <div class="response">
-            <h2>Prompt: {api_response.prompt}</h2>
-            <div class="image-container">
-                <img
-                    bind:this={imageElement}
-                    src={api_response.image_url}
-                    alt="Generated Image"
-                    on:load={handleImageLoad}
+        <!-- Feedback section -->
+        {#if history.length > 0}
+            <div class="feedback-section">
+                <h3>Refinement Feedback:</h3>
+                <input
+                    type="text"
+                    bind:value={feedback_value}
+                    placeholder="Enter feedback prompt"
+                    aria-label="Feedback prompt"
                 />
-                <canvas
-                    bind:this={canvas}
-                    on:mousedown={startDrawing}
-                    on:mousemove={draw}
-                    on:mouseup={stopDrawing}
-                    on:mouseout={stopDrawing}
-                ></canvas>
+                <button on:click={submitFeedback} disabled={is_loading}>
+                    {is_loading ? 'Refining...' : 'Submit Feedback'}
+                </button>
             </div>
-        </div>
-    {/if}
+        {/if}
 
-    <!-- History of generated and modified images -->
-    {#if history.length > 1}
-        <div class="history">
-            <h3>History</h3>
-            {#each history as item, index}
-                <div class="history-item {item.category}">
-                    <img src={item.image_url} alt={`Image ${index + 1}`} />
-                    <div class="prompt-section">
-                        <p class="prompt">Prompt: {item.prompt}</p>
-                        <div class="type-and-download">
-                            <span class="type">
-                                {#if item.category === 'generated'}
-                                    Base Generation
-                                {:else if item.category === 'modified'}
-                                    User Modification
-                                {:else if item.category === 'refined'}
-                                    AI Refinement
-                                {/if}
-                            </span>
+        <!-- Brush Controls and Undo Button -->
+        {#if history.length > 0}
+            <div class="brush-controls">
+                <label for="brushSize">Brush: {brushSize}px</label>
+                <input
+                    type="range"
+                    id="brushSize"
+                    min="1"
+                    max="50"
+                    bind:value={brushSize}
+                    aria-label="Brush size slider"
+                />
+                <button class="undo-button" on:click={undo} disabled={undoStack.length === 0}>
+                    Undo
+                </button>
+            </div>
+        {/if}
+
+        <!-- Display loading, error, or API response -->
+        {#if is_loading && history.length === 0}
+            <p class="message">Loading...</p>
+        {:else if error}
+            <p class="message error">Error: {error}</p>
+        {:else if api_response}
+            <div class="response">
+                <h2>Prompt: {api_response.prompt}</h2>
+                <div class="image-container">
+                    <img
+                        bind:this={imageElement}
+                        src={api_response.image_url}
+                        alt="Generated Image"
+                        on:load={handleImageLoad}
+                    />
+                    <canvas
+                        bind:this={canvas}
+                        on:mousedown={startDrawing}
+                        on:mousemove={draw}
+                        on:mouseup={stopDrawing}
+                        on:mouseout={stopDrawing}
+                    ></canvas>
+                </div>
+            </div>
+        {/if}
+
+        <!-- History of generated and modified images -->
+        {#if history.length > 1}
+            <div class="history">
+                <h3>History</h3>
+                {#each history as item, index}
+                    <div class="history-item {item.category}">
+                        <img src={item.image_url} alt={"Image " + (index + 1)} />
+                        <div class="prompt-section">
+                            <p class="prompt">Prompt: {item.prompt}</p>
+                            <div class="type-and-download">
+                                <span class="type">
+                                    {#if item.category === 'generated'}
+                                        Base Generation
+                                    {:else if item.category === 'modified'}
+                                        User Modification
+                                    {:else if item.category === 'refined'}
+                                        AI Refinement
+                                    {/if}
+                                </span>
+                            </div>
+                            <p class="timestamp">Time: {new Date(item.timestamp).toLocaleString()}</p>
                         </div>
-                        <p class="timestamp">Time: {new Date(item.timestamp).toLocaleString()}</p>
                     </div>
+                {/each}
+            </div>
+        {/if}
+    </div>
+
+    <!-- Chatbot Pane -->
+    <div class="chatbot-pane">
+        <h2>Chatbot</h2>
+        <div class="chat-messages">
+            {#each chatMessagesChat as message}
+                <div class="chat-message {message.user ? 'user' : 'bot'}">
+                    <p>{message.text}</p>
                 </div>
             {/each}
         </div>
-    {/if}
+        {#if chatError}
+            <p class="chat-error">Error: {chatError}</p>
+        {/if}
+        <div class="chat-input">
+            <input
+                type="text"
+                bind:value={chatInput}
+                placeholder="Type your message..."
+                aria-label="Chat input"
+                on:keydown={(e) => { if (e.key === 'Enter') sendChatMessage(); }}
+                disabled={isChatLoading}
+            />
+            <button on:click={sendChatMessage} disabled={isChatLoading}>
+                {isChatLoading ? 'Sending...' : 'Send'}
+            </button>
+        </div>
+    </div>
 </div>
