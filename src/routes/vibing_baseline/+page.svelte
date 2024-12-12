@@ -252,16 +252,16 @@
             };
 
             // call GPT to get the description
-            const description = await fetchImageDescriptionForGeneratedImage(imageUrl);
+            // const description = await fetchImageDescriptionForGeneratedImage(imageUrl);
 
             // Add to history
             currentGeneratedImage = {
                 imageUrl: imageUrl,
                 timestamp: api_response.timestamp,
                 prompt: api_response.prompt,
-                description: description
+                description: ""
             };
-            generatedImages = [...generatedImages, currentGeneratedImage];
+            // generatedImages = [...generatedImages, currentGeneratedImage];
             
             
         } catch (err) {
@@ -1003,6 +1003,7 @@
 <div class="parent-container">
     <!-- History of generated and modified images -->
     <!--{#if generatedImages.length > 1}-->
+    <!--
         <div class="history">
             <h3>History</h3>
             {#each generatedImages.reverse() as item, index}
@@ -1017,6 +1018,7 @@
                 </div>
             {/each}
         </div>
+-->
     <!--{/if}-->
 
     <!-- Existing Image Interaction Container -->
@@ -1031,6 +1033,7 @@
                 placeholder="Image Prompt"
                 aria-label="Image prompt"
                 rows="5"
+                style="width: 90%;"
             ></textarea>
             
             <!--
@@ -1048,9 +1051,11 @@
                 <button on:click={callStability} disabled={isImageGenLoading} style="width:50%;display:inline-block">
                     {isImageGenLoading ? 'Generating...' : 'Generate with Prompt'}
                 </button>
+                <!--
                 <button on:click={generateImageWithSketch} disabled={isImageGenLoading || !currentGeneratedImage} style="width:50%;display:inline-block">
-                    {isImageGenLoading ? 'Generating...' : 'Generate with Prompt and Image'}
+                    {isImageGenLoading ? 'Generating...' : 'Generate with Prompt and Image Below'}
                 </button>
+                -->
             </div>
         </div>
         
@@ -1095,6 +1100,7 @@
 
         <!-- Brush Controls and Undo Button -->
         <!--{#if history.length > 0}-->
+        <!--
             <div class="brush-controls">
                 <label for="brushSize">Brush: {brushSize}px</label>
                 <input
@@ -1105,12 +1111,13 @@
                     bind:value={brushSize}
                     aria-label="Brush size slider"
                 />
+    -->
                 <!--
                 <button class="undo-button" on:click={undo} disabled={undoStack.length === 0}>
                     Undo
                 </button>
                 -->
-            </div>
+           <!-- </div>}-->
         <!--{/if}-->
 
         <!-- Display loading, error, or API response -->
@@ -1127,6 +1134,7 @@
                         alt="Generated Image"
                         on:load={handleImageLoad}
                     />
+                    <!--
                     <canvas
                         bind:this={canvas}
                         on:mousedown={startDrawing}
@@ -1134,9 +1142,11 @@
                         on:mouseup={stopDrawing}
                         on:mouseout={stopDrawing}
                     ></canvas>
+                    -->
                 </div>
                 <h4>Prompt</h4>
                 <p>{currentGeneratedImage.prompt}</p>
+                <!--
                 <h4>Image Description</h4>
                 {#each extractTextBetweenTags(currentGeneratedImage.description, "description") as d}
                     <p>{d}</p>
@@ -1145,6 +1155,7 @@
                 {#each extractTextBetweenTags(currentGeneratedImage.description, "bullet") as d}
                     <p>- {d}</p>
                 {/each}
+                -->
                 <!--
                 {#if globalOptimizedPrompt}
                 <p class="optimized-prompt">Optimized Prompt: {globalOptimizedPrompt}</p>
@@ -1171,10 +1182,9 @@
     </div>
 
     <!-- Chatbot Pane -->
+     <!--
     <div class="chatbot-pane box">
-        <!--{JSON.stringify(chatMessagesBackend)}  For debug -->
-        <!-- Image upload -->
-        <h2>Assistant</h2>
+        <h2>Chatbot</h2>
         <h3>Sketch Upload</h3>
         <div class="image-upload-input">
             <input type="file" accept="image/*" on:change={handleFileChange} />
@@ -1234,5 +1244,5 @@
                 {isChatLoading ? 'Sending...' : 'Send'}
             </button>
         </div>
-    </div>
+    </div> -->
 </div>
