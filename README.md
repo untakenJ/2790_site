@@ -42,4 +42,4 @@ npm run dev -- --open
 > ~~To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.~~
 
 ## Demo
-Once the service is running with `npm run dev`, you may access the application through the browser.
+Once the service is running with `npm run dev`, you may access the application through the browser. The default port would be `5173`. The final version of our application can be accessed with [http://localhost:5173](http://localhost:5173) and the baseline system is at [http://localhost:5173/vibing_baseline](http://localhost:5173/vibing_baseline).
