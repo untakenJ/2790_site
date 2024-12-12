@@ -1,8 +1,10 @@
-# sv
+# VIBING
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+This is the code repository for the CS 2790R project `VIBING: Visual INtuition-Based Interaction for Natural Generation from Painters & Srtists` at Harvard University.
 
-## Creating a project
+This project is powered by [`Svelte`](https://github.com/sveltejs/svelte).
+
+<!-- ## Creating a project
 
 If you're seeing this, you've probably already done this step. Congrats!
 
@@ -12,11 +14,11 @@ npx sv create
 
 # create a new project in my-app
 npx sv create my-app
-```
+``` -->
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Once you've installed dependencies with `npm install` , start a development server:
 
 ```bash
 npm run dev
@@ -27,12 +29,17 @@ npm run dev -- --open
 
 ## Building
 
-To create a production version of your app:
+**Please note that the production version hasn't been tested yet. Our user studies are based on the dev version. We are continuing developing this application!**
+
+~~To create a production version of your app:~~
 
 ```bash
-npm run build
+# npm run build
 ```
 
-You can preview the production build with `npm run preview`.
+~~You can preview the production build with `npm run preview`.~~
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+> ~~To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.~~
+
+## Demo
+Once the service is running with `npm run dev`, you may access the application through the browser.
